@@ -132,7 +132,7 @@ void Attenuator_Platform_Delay_us(uint32_t us);
 /**
  * @brief 平台抽象：一个空操作的 NOP 函数
  */
-inline void Attenuator_Platform_NOP(void);
+ inline void Attenuator_Platform_NOP(void);
 
 /* ===== 5. 衰减器功能函数声明 ===== */
 /**
