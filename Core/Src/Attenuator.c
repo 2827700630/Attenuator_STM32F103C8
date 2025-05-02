@@ -4,6 +4,9 @@
 
 /**
  * @brief 平台抽象：写入 GPIO 引脚电平
+ * @param port: 指向 GPIO 端口/实例的指针 (平台相关类型)
+ * @param pin: GPIO 引脚号/掩码 (平台相关类型)
+ * @param state: 要设置的引脚状态 (Attenuator_PinState)
  */
 void Attenuator_Platform_GPIO_WritePin(Attenuator_GPIO_TypeDef *port, uint32_t pin, Attenuator_PinState state)
 {
@@ -12,13 +15,9 @@ void Attenuator_Platform_GPIO_WritePin(Attenuator_GPIO_TypeDef *port, uint32_t p
     HAL_GPIO_WritePin(port, (uint16_t)pin, state); // STM32 pin 是 uint16_t
 #elif defined(USE_MSPM0)
     /* MSPM0 平台 (使用 DriverLib) */
-    // port 是 GPIO_Regs* (例如 GPIOA), pin 是引脚掩码 (例如 DL_GPIO_PIN_0)
-    if (state == ATTENUATOR_PIN_SET)
-    {
+    if (state == ATTENUATOR_PIN_SET) {
         DL_GPIO_setPins(port, pin);
-    }
-    else
-    {
+    } else {
         DL_GPIO_clearPins(port, pin);
     }
 #else
@@ -29,6 +28,11 @@ void Attenuator_Platform_GPIO_WritePin(Attenuator_GPIO_TypeDef *port, uint32_t p
 
 /**
  * @brief 平台抽象：SPI 传输函数
+ * @param hspi: 指向 SPI 句柄/寄存器的指针 (平台相关类型)
+ * @param data: 指向要发送数据的指针
+ * @param size: 要发送的数据大小 (字节数)
+ * @param timeout: 超时时间 (ms) - 可能不使用
+ * @return: 传输状态 (Attenuator_Status)
  */
 Attenuator_Status Attenuator_Platform_SPI_Transmit(Attenuator_SPI_TypeDef *hspi, uint8_t *data, uint16_t size, uint32_t timeout)
 {
@@ -37,30 +41,14 @@ Attenuator_Status Attenuator_Platform_SPI_Transmit(Attenuator_SPI_TypeDef *hspi,
     return HAL_SPI_Transmit(hspi, data, size, timeout);
 #elif defined(USE_MSPM0)
     /* MSPM0 平台 (使用 DriverLib) - 假设使用轮询方式 */
-    // hspi 是 SPI_Regs* (例如 SPI0)
     uint16_t i;
-    for (i = 0; i < size; i++)
-    {
-        // 等待 TX FIFO 非满
-        while (DL_SPI_isTXFIFOFull(hspi))
-        {
-            // 可选：添加超时处理
-        }
-        // 写入数据
-        DL_SPI_transmitData8(hspi, data[i]);
-        // 等待 RX FIFO 非空 (确保传输完成)
-        while (!DL_SPI_isRXFIFOEmpty(hspi))
-        {
-            // 可选：添加超时处理
-        }
-        // 读取并丢弃接收到的数据，以清空 RX FIFO
-        (void)DL_SPI_receiveData8(hspi);
+    for (i = 0; i < size; i++) {
+        while (DL_SPI_isTXFIFOFull(hspi)); // 等待 TX FIFO 非满
+        DL_SPI_transmitData8(hspi, data[i]); // 写入数据
+        while (!DL_SPI_isRXFIFOEmpty(hspi)); // 等待 RX FIFO 非空
+        (void)DL_SPI_receiveData8(hspi); // 读取并丢弃接收到的数据
     }
-    // 等待 SPI 总线空闲
-    while (DL_SPI_isBusy(hspi))
-    {
-        // 可选：添加超时处理
-    }
+    while (DL_SPI_isBusy(hspi)); // 等待 SPI 总线空闲
     return ATTENUATOR_OK;
 #else
     /* 默认使用 STM32 HAL */
@@ -70,6 +58,7 @@ Attenuator_Status Attenuator_Platform_SPI_Transmit(Attenuator_SPI_TypeDef *hspi,
 
 /**
  * @brief 平台抽象：毫秒级延时函数
+ * @param ms: 延时毫秒数
  */
 void Attenuator_Platform_Delay_ms(uint32_t ms)
 {
@@ -77,13 +66,11 @@ void Attenuator_Platform_Delay_ms(uint32_t ms)
     /* STM32 HAL 平台 */
     HAL_Delay(ms);
 #elif defined(USE_MSPM0)
-/* MSPM0 平台 - 使用 DriverLib 提供的延时 */
-// 假设 CPU 时钟频率已定义为 CPUCLK_FREQ (在 ti_msp_dl_config.h 或其他地方)
-// 注意：DL_Common_delayCycles 的精度依赖于 CPUCLK_FREQ 的准确性
-#ifndef CPUCLK_FREQ
-#warning "CPUCLK_FREQ 未定义，毫秒延时可能不准确"
-#define CPUCLK_FREQ (32000000) // 假设一个默认值，例如 32MHz
-#endif
+    /* MSPM0 平台 - 使用 DriverLib 提供的延时 */
+    #ifndef CPUCLK_FREQ
+    #warning "CPUCLK_FREQ 未定义，毫秒延时可能不准确"
+    #define CPUCLK_FREQ (32000000) // 假设一个默认值，例如 32MHz
+    #endif
     DL_Common_delayCycles(ms * (CPUCLK_FREQ / 1000));
 #else
     /* 默认使用 STM32 HAL */
@@ -93,46 +80,36 @@ void Attenuator_Platform_Delay_ms(uint32_t ms)
 
 /**
  * @brief 平台抽象：微秒级延时函数
+ * @param us: 延时微秒数
  */
 void Attenuator_Platform_Delay_us(uint32_t us)
 {
 #if defined(USE_STM32_HAL)
     /* STM32 HAL 微秒延时 - 使用 DWT */
+    // 确保 DWT 已启用: CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
     uint32_t start = DWT->CYCCNT;
     uint32_t cycles = us * (SystemCoreClock / 1000000);
-    while ((DWT->CYCCNT - start) < cycles)
-        ;
+    while ((DWT->CYCCNT - start) < cycles);
 #elif defined(USE_MSPM0)
-/* MSPM0 平台 - 使用 DriverLib 提供的延时 */
-#ifndef CPUCLK_FREQ
-#warning "CPUCLK_FREQ 未定义，微秒延时可能不准确"
-#define CPUCLK_FREQ (32000000) // 假设一个默认值，例如 32MHz
-#endif
-    // 对于非常短的延时，直接计算周期数可能更准确
-    // 注意：如果 us * (CPUCLK_FREQ / 1000000) 结果小于 1，延时会无效
+    /* MSPM0 平台 - 使用 DriverLib 提供的延时 */
+    #ifndef CPUCLK_FREQ
+    #warning "CPUCLK_FREQ 未定义，微秒延时可能不准确"
+    #define CPUCLK_FREQ (32000000) // 假设一个默认值，例如 32MHz
+    #endif
     uint32_t cycles = us * (CPUCLK_FREQ / 1000000);
-    if (cycles > 0)
-    {
+    if (cycles > 0) {
         DL_Common_delayCycles(cycles);
-    }
-    else if (us > 0)
-    {
-        // 对于小于一个周期的延时，至少执行一个 NOP
-        Attenuator_Platform_NOP();
+    } else if (us > 0) {
+        Attenuator_Platform_NOP(); // 至少执行一个 NOP
     }
 #else
-    /* 默认实现为空或 NOP 循环 */
-    volatile uint32_t i;
-    for (i = 0; i < us; i++)
-    {
-        __NOP();
-        __NOP();
-        __NOP();
-        __NOP();
-        __NOP();
-        __NOP();
-        __NOP();
-        __NOP();
+    /* 默认实现为空或 NOP 循环 (非常不精确) */
+    volatile uint32_t i, j;
+    for (i = 0; i < us; i++) {
+        // 这个循环次数需要根据实际 CPU 频率调整
+        for (j = 0; j < 10; j++) {
+             __NOP();
+        }
     }
 #endif
 }
@@ -142,8 +119,14 @@ void Attenuator_Platform_Delay_us(uint32_t us)
  */
 void Attenuator_Platform_NOP(void)
 {
-#if defined(USE_STM32_HAL) || defined(__CORTEX_M) || defined(USE_MSPM0)
-    /* ARM Cortex-M 平台 (包括 STM32 和 MSPM0) */
+#if defined(USE_STM32_HAL)
+    /* STM32 HAL 平台 (ARM Cortex-M) */
+    __NOP();
+#elif defined(USE_MSPM0)
+    /* MSPM0 平台 (ARM Cortex-M0+) */
+    __NOP();
+#elif defined(__CORTEX_M)
+    /* 其他 ARM Cortex-M 平台 */
     __NOP();
 #else
     /* 其他平台 - 空操作 */
@@ -154,6 +137,14 @@ void Attenuator_Platform_NOP(void)
 
 /**
  * @brief 初始化衰减器设备句柄
+ * @param Attenuator: 指向衰减器设备句柄的指针
+ * @param hspi: 指向要使用的 SPI 句柄/寄存器的指针
+ * @param parallel_serial_port: Parallel/Serial Mode 引脚的 GPIO 端口/实例
+ * @param parallel_serial_pin: Parallel/Serial Mode 引脚号/掩码
+ * @param latch_enable_port: Latch Enable Input 引脚的 GPIO 端口/实例
+ * @param latch_enable_pin: Latch Enable Input 引脚号/掩码
+ * @return: 操作状态 (Attenuator_Status)
+ * @note 对于 MSPM0，port/pin 参数应对应 SysConfig 生成的 GPIO 实例和引脚掩码/索引
  */
 Attenuator_Status Attenuator_Init(Attenuator_HandleTypeDef *Attenuator, Attenuator_SPI_TypeDef *hspi,
 #if defined(USE_MSPM0)
@@ -161,17 +152,16 @@ Attenuator_Status Attenuator_Init(Attenuator_HandleTypeDef *Attenuator, Attenuat
                                   GPIO_Regs *latch_enable_gpio, uint32_t latch_enable_pinIndex)
 {
     Attenuator->hspi = hspi;
-    // MSPM0: 存储 GPIO 实例和引脚索引/掩码
     Attenuator->parallel_serial_gpio = parallel_serial_gpio;
     Attenuator->parallel_serial_pinIndex = parallel_serial_pinIndex;
     Attenuator->latch_enable_gpio = latch_enable_gpio;
     Attenuator->latch_enable_pinIndex = latch_enable_pinIndex;
 
-    // 初始化 GPIO 状态 - 使用平台抽象函数
+    // 初始化 GPIO 状态
     Attenuator_Platform_GPIO_WritePin(Attenuator->latch_enable_gpio, Attenuator->latch_enable_pinIndex, ATTENUATOR_PIN_RESET);
     Attenuator_Platform_GPIO_WritePin(Attenuator->parallel_serial_gpio, Attenuator->parallel_serial_pinIndex, ATTENUATOR_PIN_SET);
 
-#else // 其他平台
+#elif defined(USE_STM32_HAL) // 添加 STM32 HAL 分支
                                   Attenuator_GPIO_TypeDef *parallel_serial_port, uint16_t parallel_serial_pin,
                                   Attenuator_GPIO_TypeDef *latch_enable_port, uint16_t latch_enable_pin)
 {
@@ -181,7 +171,21 @@ Attenuator_Status Attenuator_Init(Attenuator_HandleTypeDef *Attenuator, Attenuat
     Attenuator->latch_enable_port = latch_enable_port;
     Attenuator->latch_enable_pin = latch_enable_pin;
 
-    // 初始化 GPIO 状态 - 使用平台抽象函数
+    // 初始化 GPIO 状态
+    Attenuator_Platform_GPIO_WritePin(Attenuator->latch_enable_port, Attenuator->latch_enable_pin, ATTENUATOR_PIN_RESET);
+    Attenuator_Platform_GPIO_WritePin(Attenuator->parallel_serial_port, Attenuator->parallel_serial_pin, ATTENUATOR_PIN_SET);
+
+#else // 默认或其他平台 (使用与 STM32 相同的参数)
+                                  Attenuator_GPIO_TypeDef *parallel_serial_port, uint16_t parallel_serial_pin,
+                                  Attenuator_GPIO_TypeDef *latch_enable_port, uint16_t latch_enable_pin)
+{
+    Attenuator->hspi = hspi;
+    Attenuator->parallel_serial_port = parallel_serial_port;
+    Attenuator->parallel_serial_pin = parallel_serial_pin;
+    Attenuator->latch_enable_port = latch_enable_port;
+    Attenuator->latch_enable_pin = latch_enable_pin;
+
+    // 初始化 GPIO 状态
     Attenuator_Platform_GPIO_WritePin(Attenuator->latch_enable_port, Attenuator->latch_enable_pin, ATTENUATOR_PIN_RESET);
     Attenuator_Platform_GPIO_WritePin(Attenuator->parallel_serial_port, Attenuator->parallel_serial_pin, ATTENUATOR_PIN_SET);
 #endif
@@ -190,6 +194,10 @@ Attenuator_Status Attenuator_Init(Attenuator_HandleTypeDef *Attenuator, Attenuat
 
 /**
  * @brief 串行模式设置衰减值
+ * @param Attenuator: 指向衰减器设备句柄的指针
+ * @param attenuation: 目标衰减值（范围由 ATTENUATOR_MIN_DB 和 ATTENUATOR_MAX_DB 定义）
+ * @return: 操作状态 (Attenuator_Status)
+ * @note 适用于支持串行模式的衰减器，步进由 ATTENUATOR_STEP_DB 定义
  */
 Attenuator_Status Attenuator_SetAttenuation_SPI(Attenuator_HandleTypeDef *Attenuator, float attenuation)
 {
