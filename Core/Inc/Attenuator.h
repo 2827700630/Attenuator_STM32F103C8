@@ -2,9 +2,9 @@
 #define INC_ATTENUATOR_H_
 
 /**
- * 
+ *
  * 衰减器数据手册摘要
- * 
+ *
  * - HMC624A: 0.1-6.0 GHz, 6位数字控制, 0.5 dB/步进, 最大31.5 dB
  * - PE4302: DC-4.0 GHz, 6位数字控制, 0.5 dB/步进, 最大31.5 dB
  * (详细数据请参考各自数据手册)
@@ -125,12 +125,6 @@ Attenuator_Status Attenuator_Platform_SPI_Transmit(Attenuator_SPI_TypeDef *hspi,
 void Attenuator_Platform_Delay_ms(uint32_t ms);
 
 /**
- * @brief 平台抽象：微秒级延时函数
- * @param us: 延时微秒数
- */
-void Attenuator_Platform_Delay_us(uint32_t us);
-
-/**
  * @brief 平台抽象：一个空操作的 NOP 函数
  */
 void Attenuator_Platform_NOP(void);
@@ -159,13 +153,78 @@ Attenuator_Status Attenuator_Init(Attenuator_HandleTypeDef *Attenuator, Attenuat
                                   Attenuator_GPIO_TypeDef *latch_enable_port, uint16_t latch_enable_pin);
 #endif
 
+
 /**
- * @brief 串行模式设置衰减值
+ * @brief 串行模式设置衰减值 (通过 dB 值)
  * @param Attenuator: 指向衰减器设备句柄的指针
  * @param attenuation: 目标衰减值（范围由 ATTENUATOR_MIN_DB 和 ATTENUATOR_MAX_DB 定义）
  * @return: 操作状态 (Attenuator_Status)
  * @note 适用于支持串行模式的衰减器，步进由 ATTENUATOR_STEP_DB 定义
  */
-Attenuator_Status Attenuator_SetAttenuation_SPI(Attenuator_HandleTypeDef *Attenuator, float attenuation);
+Attenuator_Status Attenuator_Set_SPI(Attenuator_HandleTypeDef *Attenuator, float attenuation);
+
+/**
+ * @brief 将电压衰减倍数转换为dB值，注释中包含常用电压比对应dB值对照表
+ * @param ratio: 电压衰减倍数，如衰减到原来的1/10，则ratio=10
+ * @return: 衰减值(dB)
+ * @note: 通用计算函数，不限制返回值范围
+ *
+ * 常用电压比对应dB值对照表：
+ * 电压比(ratio)| dB值
+ * ------------|------
+ * 1.0         | 0 dB  (无衰减)
+ * 1.1         | 0.83 dB
+ * 1.2         | 1.58 dB
+ * 1.4         | 2.92 dB
+ * 1.5         | 3.52 dB
+ * 1.585       | 4 dB (约1.6倍)
+ * 2.0         | 6.02 dB (2倍)
+ * 2.5         | 7.96 dB
+ * 3.16        | 10 dB (约3.2倍)
+ * 3.98        | 12 dB (约4倍)
+ * 5.0         | 13.98 dB (5倍)
+ * 6.3         | 16 dB (约6.3倍)
+ * 10.0        | 20 dB (10倍)
+ * 20.0        | 26.02 dB (20倍)
+ * 100.0       | 40 dB (100倍)
+ * 1000.0      | 60 dB (1000倍)
+ */
+float VoltageRatioToDb(float ratio);
+
+/**
+ * @brief 将dB值转换为电压衰减倍数，注释中包含常用dB值对应电压比对照表
+ * @param db: 衰减值(dB)
+ * @return: 电压衰减倍数，如衰减10dB则返回约3.16(1/0.316)
+ * @note: 通用计算函数，不限制输入范围
+ *
+ * 常用dB值对应电压比对照表：
+ * dB值    | 电压比(ratio)| 说明
+ * --------|-------------|------------------------
+ * 0 dB    | 1.0         | 无衰减/增益
+ * 1 dB    | 1.122       | 约1.12倍
+ * 2 dB    | 1.259       | 约1.26倍
+ * 3 dB    | 1.413       | 约1.41倍 (功率减半点)
+ * 6 dB    | 1.995       | 约2倍
+ * 10 dB   | 3.162       | 约3.16倍 (一个数量级)
+ * 12 dB   | 3.981       | 约4倍
+ * 20 dB   | 10.0        | 10倍
+ * 30 dB   | 31.62       | 约31.6倍
+ * 40 dB   | 100.0       | 100倍 (两个数量级)
+ * 60 dB   | 1000.0      | 1000倍 (三个数量级)
+ * -3 dB   | 0.708       | 约0.71倍 (功率减半点)
+ * -6 dB   | 0.501       | 约0.5倍 (电压减半)
+ * -10 dB  | 0.316       | 约0.32倍
+ * -20 dB  | 0.1         | 0.1倍 (减少一个数量级)
+ */
+float DbToVoltageRatio(float db);
+
+/**
+ * @brief 使用电压衰减倍数设置衰减值
+ * @param Attenuator: 指向衰减器设备句柄的指针
+ * @param ratio: 电压衰减倍数，如衰减到原来的1/10，则ratio=10
+ * @return: 操作状态 (Attenuator_Status)
+ * @note: 会自动限制衰减值在衰减器支持的范围内
+ */
+Attenuator_Status Attenuator_Set_Ratio(Attenuator_HandleTypeDef *Attenuator, float ratio);
 
 #endif /* INC_ATTENUATOR_H_ */

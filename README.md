@@ -6,19 +6,18 @@
 
 项目包含一个测试程序，该程序会循环设置衰减值从最小值 (0dB) 到最大值 (31.5dB)，然后再返回最小值，步进为 0.5dB。板载 LED 会闪烁以指示程序正在运行。
 
+在 `Attenuator.h` 中切换宏定义来切换使用平台
+
 ## 硬件要求
 
 *   **微控制器**: STM32F103C8T6 ("Blue Pill") 或其他 STM32 型号。
 *   **衰减器模块**: HMC624A、PE4302 或其他具有 SPI 串行控制接口的数字步进衰减器模块。
-*   **编程器/调试器**: ST-Link V2 或兼容的调试器。
 *   **连接线**: 杜邦线若干。
 
 ## 软件要求
 
-*   **IDE**: STM32CubeIDE (推荐), Keil MDK, IAR Embedded Workbench, 或 PlatformIO。
+*   **IDE**: STM32CubeIDE 或 PlatformIO。
 *   **配置工具**: STM32CubeMX (已集成在 STM32CubeIDE 中)。
-*   **编程软件**: STM32 ST-LINK Utility 或 IDE 内置的烧录功能。
-*   **驱动**: ST-Link 驱动程序。
 
 ## 硬件连接
 
