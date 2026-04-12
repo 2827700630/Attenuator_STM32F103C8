@@ -63,10 +63,10 @@ void Error_Handler(void);
 #define PS2_GPIO_Port GPIOA
 #define LE2_Pin GPIO_PIN_2
 #define LE2_GPIO_Port GPIOA
-#define PS_Pin GPIO_PIN_0
-#define PS_GPIO_Port GPIOB
-#define LE_Pin GPIO_PIN_1
+#define LE_Pin GPIO_PIN_0
 #define LE_GPIO_Port GPIOB
+#define PS_Pin GPIO_PIN_1
+#define PS_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
