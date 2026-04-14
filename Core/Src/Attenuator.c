@@ -101,7 +101,21 @@ HAL_StatusTypeDef Attenuator_PE43711_SetAttenuation_SPI(Attenuator_HandleTypeDef
         attenuation = ATTENUATOR_MIN_DB;
     if (attenuation > PE43711_MAX_DB)
         attenuation = PE43711_MAX_DB;
-    uint8_t data = (uint8_t)(attenuation / PE43711_STEP_DB);
+    uint8_t val = (uint8_t)(attenuation / PE43711_STEP_DB);
+
+    /* 
+     * 根据时序图，PE43711 需要先接收 D0 (0.25dB位)，最后接收 D7 (必须为逻辑低电平)。 
+     * 而 STM32 的 SPI 通常默认配置为 MSB First (最高位先发)。
+     * 因此我们需要将 val 进行 8位比特翻转 (Bit-Reverse)，使得原本的 LSB 被移到 MSB 并最先发出。
+     */
+    uint8_t data = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        if (val & (1 << i))
+        {
+            data |= (1 << (7 - i));
+        }
+    }
 
     /* 3. 在 SPI 发送数据时保持 LE 为低电平 */
     HAL_GPIO_WritePin(Attenuator->latch_enable_port, Attenuator->latch_enable_pin, GPIO_PIN_RESET);

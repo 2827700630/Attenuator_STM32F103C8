@@ -102,17 +102,18 @@ int main(void)
   {
     HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin); // Toggle the LED pin
     HAL_Delay(500);
-    // for (int i = 0; i < 64; i++)
-    // {
-    //   Attenuator_PE43711_SetAttenuation_SPI(&attenuator1, i * 0.25f);
-    //   HAL_Delay(100);
-    // }
-    // for (int i = 0; i < 64; i++)
-    // {
-    //   Attenuator_SetAttenuation_SPI(&attenuator2, i * 0.5f);
-    //   HAL_Delay(100);
-    // }
-    Attenuator_PE43711_SetAttenuation_SPI(&attenuator1, 20);
+    // 遍历 PE43711 (0.25dB 步进, 0 - 31.75dB, 共 128 步)
+    for (int i = 0; i <= 127; i++)
+    {
+      Attenuator_PE43711_SetAttenuation_SPI(&attenuator1, i * 0.25f);
+      HAL_Delay(50);
+    }
+    // 遍历 HMC624A/PE4302 (0.5dB 步进, 0 - 31.5dB, 共 64 步)
+    for (int i = 0; i <= 63; i++)
+    {
+      Attenuator_SetAttenuation_SPI(&attenuator2, i * 0.5f);
+      HAL_Delay(50);
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
